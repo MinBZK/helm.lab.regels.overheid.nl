@@ -1,0 +1,28 @@
+{{- if .Values.databasesPersistence.enabled }}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ template "sparql.dataPvcName" . }}
+  namespace: {{ .Release.Namespace }}
+{{- with .Values.databasesPersistence.annotations  }}
+  annotations:
+{{ toYaml . | indent 4 }}
+{{- end }}
+  labels:
+    app: {{ template "sparql.fullname" . }}
+spec:
+  {{- range .Values.databasesPersistence.accessModes }}
+  accessModes:
+    - {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.databasesPersistence.size | quote }}
+{{- if .Values.databasesPersistence.storageClass }}
+{{- if (eq "-" .Values.databasesPersistence.storageClass) }}
+  storageClassName: ""
+{{- else }}
+  storageClassName: "{{ .Values.databasesPersistence.storageClass }}"
+{{- end }}
+{{- end }}
+{{- end }}
