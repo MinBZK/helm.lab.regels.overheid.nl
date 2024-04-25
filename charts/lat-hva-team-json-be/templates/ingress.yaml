@@ -18,10 +18,27 @@ metadata:
   name: {{ $fullName }}
   labels:
     {{- include "lat-hva-team-json-be.labels" . | nindent 4 }}
-  {{- with .Values.ingress.annotations }}
   annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- $defaultAnnotations := dict
+      "nginx.ingress.kubernetes.io/backend-protocol" "FCGI"
+      "nginx.ingress.kubernetes.io/fastcgi-index" "index.php"
+      "nginx.ingress.kubernetes.io/fastcgi-params-configmap" (include "lat-hva-team-json-be.fullname" .)
+      "nginx.ingress.kubernetes.io/rewrite-target" (printf "%s/$2" .Values.ingress.root)
+      "nginx.ingress.kubernetes.io/configuration-snippet" (printf `
+        rewrite ^([^.]*[^/])$ $1/ permanent;
+        rewrite ^%s(/.*\.php)$ /var/www/html/public$1 break;
+
+        location ~ \.php$ {
+          fastcgi_pass unix:/var/run/php/php7.2-fpm.sock;
+          fastcgi_param SCRIPT_FILENAME $request_filename;
+        }
+      ` .Values.ingress.root)
+    }}
+    {{- $annotations := $defaultAnnotations }}
+    {{- if .Values.ingress.annotations }}
+    {{- $annotations := merge $defaultAnnotations .Values.ingress.annotations }}
+    {{- end }}
+    {{- toYaml $defaultAnnotations | nindent 4 }}
 spec:
   {{- if and .Values.ingress.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
   ingressClassName: {{ .Values.ingress.className }}
