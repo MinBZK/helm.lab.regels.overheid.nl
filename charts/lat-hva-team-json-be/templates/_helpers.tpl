@@ -86,3 +86,15 @@ Create the name of the service account to use
 {{ define "postgresql.passwordKey" }}
 {{- "password" -}}
 {{- end -}}
+
+{{- define "redis.fullname" -}}
+{{ printf "%s-%s" .Release.Name "redis" | trunc 63 | trimSuffix "-" }}
+{{- end -}}
+
+{{- define "redis.secretName" -}}
+{{ include "redis.fullname" . }}
+{{- end -}}
+
+{{- define "redis.passwordKey" -}}
+{{- "redis-password" -}}
+{{- end -}}

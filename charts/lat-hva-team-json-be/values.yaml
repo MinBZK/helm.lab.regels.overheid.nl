@@ -75,6 +75,8 @@ postgresql:
 
 redis:
   enabled: true
+  replica:
+    replicaCount: 1
 
 resources:
   {}
