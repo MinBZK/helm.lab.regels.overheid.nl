@@ -30,6 +30,7 @@ Create chart name and version as used by the chart label.
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
+
 {{/*
 Common labels
 */}}
@@ -60,3 +61,28 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+
+{{- define "postgresql.fullname" -}}
+{{ printf "%s-%s" .Release.Name "postgresql" | trunc 63 | trimSuffix "-" }}
+{{- end -}}
+
+{{- define "postgresql.port" -}}
+{{-  "5432" -}}
+{{- end -}}
+
+{{- define "pospostgresql.database" -}}
+  {{- .Values.postgresql.auth.database | quote -}}
+{{- end -}}
+
+{{- define "pospostgresql.user" -}}
+  {{- .Values.postgresql.auth.username | quote -}}
+{{- end -}}
+
+{{- define "postgresql.secretName" -}}
+{{ include "postgresql.fullname" . }}
+{{- end -}}
+
+{{ define "postgresql.passwordKey" }}
+{{- "password" -}}
+{{- end -}}

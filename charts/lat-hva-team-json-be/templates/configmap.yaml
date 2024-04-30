@@ -3,8 +3,12 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ include "lat-hva-team-json-be.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "lat-hva-team-json-be.labels" . | nindent 4 }}
 data:
   SCRIPT_FILENAME: "/var/www/html/public/index.php"
+  DB_HOST: {{ include "postgresql.fullname" . }}
+  DB_USERNAME: {{ include "pospostgresql.user" . }}
+  DB_DATABASE: {{ include "pospostgresql.database" . }}
 {{- end }}
