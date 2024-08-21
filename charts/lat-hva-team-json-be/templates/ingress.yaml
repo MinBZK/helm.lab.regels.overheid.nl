@@ -1,0 +1,78 @@
+{{- if .Values.ingress.enabled -}}
+{{- $fullName := include "lat-hva-team-json-be.fullname" . -}}
+{{- $svcPort := .Values.service.port -}}
+{{- if and .Values.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
+  {{- if not (hasKey .Values.ingress.annotations "kubernetes.io/ingress.class") }}
+  {{- $_ := set .Values.ingress.annotations "kubernetes.io/ingress.class" .Values.ingress.className}}
+  {{- end }}
+{{- end }}
+{{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion -}}
+apiVersion: networking.k8s.io/v1
+{{- else if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
+apiVersion: networking.k8s.io/v1beta1
+{{- else -}}
+apiVersion: extensions/v1beta1
+{{- end }}
+kind: Ingress
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "lat-hva-team-json-be.labels" . | nindent 4 }}
+  annotations:
+    {{- $defaultAnnotations := dict
+      "nginx.ingress.kubernetes.io/backend-protocol" "FCGI"
+      "nginx.ingress.kubernetes.io/fastcgi-index" "index.php"
+      "nginx.ingress.kubernetes.io/fastcgi-params-configmap" (include "lat-hva-team-json-be.fullname" .)
+      "nginx.ingress.kubernetes.io/rewrite-target" (printf "%s/$2" .Values.ingress.root)
+      "nginx.ingress.kubernetes.io/configuration-snippet" (printf `
+        rewrite ^([^.]*[^/])$ $1/ permanent;
+        rewrite ^%s(/.*\.php)$ /var/www/html/public$1 break;
+
+        location ~ \.php$ {
+          fastcgi_pass unix:/var/run/php/php7.2-fpm.sock;
+          fastcgi_param SCRIPT_FILENAME $request_filename;
+        }
+      ` .Values.ingress.root)
+    }}
+    {{- $annotations := $defaultAnnotations }}
+    {{- if .Values.ingress.annotations }}
+    {{- $annotations := merge $defaultAnnotations .Values.ingress.annotations }}
+    {{- end }}
+    {{- toYaml $defaultAnnotations | nindent 4 }}
+spec:
+  {{- if and .Values.ingress.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    {{- range .Values.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            {{- if and .pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.GitVersion) }}
+            pathType: {{ .pathType }}
+            {{- end }}
+            backend:
+              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
+              service:
+                name: {{ $fullName }}
+                port:
+                  number: {{ $svcPort }}
+              {{- else }}
+              serviceName: {{ $fullName }}
+              servicePort: {{ $svcPort }}
+              {{- end }}
+          {{- end }}
+    {{- end }}
+{{- end }}

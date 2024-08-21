@@ -1,0 +1,95 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "lat-hva-team-json-be.fullname" . }}-artisan-migrate-seed
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+    app.kubernetes.io/instance: {{ .Release.Name | quote }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+spec:
+  template: 
+    metadata:
+      name: {{ include "lat-hva-team-json-be.fullname" . }}-artisan-migrate-seed
+      labels:
+          app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+          app.kubernetes.io/instance: {{ .Release.Name | quote }}
+          helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    spec:
+      initContainers:
+      - name: {{ include "lat-hva-team-json-be.fullname" . }}-artisan-migrate-seed-wait
+        image: busybox
+        command: ["/bin/sh", "-c"]
+        args:
+          - >
+            until nc -z {{ include "postgresql.fullname" . }} {{ include "postgresql.port" . }};
+            do echo waiting for database; sleep 2; done;
+      containers:
+        - name: {{ include "lat-hva-team-json-be.fullname" . }}-artisan-migrate-seed-run
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - php artisan migrate --force --seed
+          envFrom:
+            - configMapRef:
+                name: {{ include "lat-hva-team-json-be.fullname" . }}
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "postgresql.secretName" . }}
+                  key: {{ include "postgresql.passwordKey" . }}
+      restartPolicy: Never
+  backoffLimit: 4
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "lat-hva-team-json-be.fullname" . }}-artisan-migrate
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+    app.kubernetes.io/instance: {{ .Release.Name | quote }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+spec:
+  template: 
+    metadata:
+      name: {{ include "lat-hva-team-json-be.fullname" . }}-artisan-migrate
+      labels:
+          app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+          app.kubernetes.io/instance: {{ .Release.Name | quote }}
+          helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    spec:
+      initContainers:
+      - name: {{ include "lat-hva-team-json-be.fullname" . }}-artisan-migrate-wait
+        image: busybox
+        command: ["/bin/sh", "-c"]
+        args:
+          - >
+            until nc -z {{ include "postgresql.fullname" . }} {{ include "postgresql.port" . }};
+            do echo waiting for database; sleep 2; done;
+      containers:
+        - name: {{ include "lat-hva-team-json-be.fullname" . }}-artisan-migrate-run
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - php artisan migrate --force
+          envFrom:
+            - configMapRef:
+                name: {{ include "lat-hva-team-json-be.fullname" . }}
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "postgresql.secretName" . }}
+                  key: {{ include "postgresql.passwordKey" . }}
+      restartPolicy: Never
+  backoffLimit: 4
