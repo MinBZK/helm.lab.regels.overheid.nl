@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "sparql.fullname" . }}
+  name: {{ include "sparql-ui.fullname" . }}
   labels:
-    {{- include "sparql.labels" . | nindent 4 }}
+    {{- include "sparql-ui.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -12,4 +12,4 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "sparql.selectorLabels" . | nindent 4 }}
+    {{- include "sparql-ui.selectorLabels" . | nindent 4 }}

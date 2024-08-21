@@ -1,18 +1,16 @@
-# Default values for sparql.
+# Default values for sparql-server.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
 replicaCount: 1
 
 image:
-  repository: registry.digitalocean.com/regels-overheid-nl/sparql
-  pullPolicy: Always
+  repository: registry.digitalocean.com/regels-overheid-nl/sparql-server
+  pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "latest"
+  tag: latest
 
-imagePullSecrets:
-  - name: regels-overheid-nl
-
+imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
@@ -49,20 +47,14 @@ service:
 
 ingress:
   enabled: true
-  className: nginx
+  className: "nginx"
   annotations:
-    nginx.ingress.kubernetes.io/configuration-snippet: |
-      if ($request_uri = "/lab/sparql") {
-        return 301 $scheme://$host$request_uri/;
-      }
-      if ($request_uri ~* "^/lab/sparql/(.*)") {
-        rewrite ^/lab/sparql/(.*) /$1 break;
-      }
-    # kubernetes.io/tls-acme: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
   hosts:
     - paths:
-        - path: /lab/sparql
-          pathType: Prefix
+        - path: /lab/sparql(?!/ui)(/|$)(.*)
+          pathType: ImplementationSpecific
   tls: []
   #  - secretName: chart-example-tls
   #    hosts:
@@ -80,15 +72,6 @@ resources:
   # requests:
   #   cpu: 100m
   #   memory: 128Mi
-
-livenessProbe:
-  httpGet:
-    path: /
-    port: http
-readinessProbe:
-  httpGet:
-    path: /
-    port: http
 
 autoscaling:
   enabled: false
@@ -115,11 +98,3 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
-
-databasesPersistence:
-  enabled: true
-  storageClass: ""
-  annotations: {}
-  accessModes:
-    - ReadWriteOnce
-  size: 8Gi
