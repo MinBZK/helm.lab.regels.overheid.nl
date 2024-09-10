@@ -2,7 +2,7 @@ ARG FUSEKI_VERSION=5.1.0
 ARG FUSEKI_FILE=jena-fuseki-server-${FUSEKI_VERSION}.jar
 ARG FUSEKI_SHA1=37975eb485d5506f8606cb7bda8a6e3c8a456a78
 
-FROM eclipse-temurin:21-jdk-alpine as builder
+FROM eclipse-temurin:21-jdk-alpine AS builder
 
 RUN apk add --no-cache wget=1.24.5-r0 unzip=6.0-r14
 
@@ -34,7 +34,20 @@ ENV PATH="/app/${JENA_NAME}/bin:$PATH"
 
 COPY datasets datasets
 
-RUN tdb2.tdbloader --loc databases/kadasteralgoritme datasets/kadasteralgoritme.ttl
+RUN for ttlfile in datasets/*.ttl; do \
+      dbname=$(basename "$ttlfile" .ttl); \
+      tdb2.tdbloader --loc databases/"$dbname" "$ttlfile"; \
+    done
+
+FROM node:20.17.0-alpine3.20 AS config-builder
+
+WORKDIR /fuseki
+
+COPY datasets datasets
+
+COPY create-config.js create-config.js
+
+RUN node create-config.js
 
 FROM eclipse-temurin:21-jdk-alpine
 
@@ -43,6 +56,7 @@ ENV FUSEKI_FILE=${FUSEKI_FILE}
 
 WORKDIR /fuseki
 
+COPY --from=config-builder /fuseki/config.ttl config.ttl
 COPY --from=builder /app/databases /fuseki/databases
 COPY --from=builder /app/${FUSEKI_FILE} /fuseki/${FUSEKI_FILE}
 
