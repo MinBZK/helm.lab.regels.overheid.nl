@@ -60,8 +60,6 @@ COPY --from=config-builder /fuseki/config.ttl config.ttl
 COPY --from=builder /app/databases /fuseki/databases
 COPY --from=builder /app/${FUSEKI_FILE} /fuseki/${FUSEKI_FILE}
 
-COPY config.ttl config.ttl
-
 EXPOSE 3030
 
 CMD ["sh", "-c", "java -jar ${FUSEKI_FILE} --config=config.ttl"]
